@@ -16,6 +16,8 @@ public class ShortUrl {
     private LocalDateTime createdAt;
     private LocalDateTime expiresAt; // optional expiration time
     private long clickCount = 0;
+    @Column(nullable = false)
+    private boolean deleted = false;
     @OneToMany(mappedBy = "shortUrl", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Click> clicks = new ArrayList<>();
 

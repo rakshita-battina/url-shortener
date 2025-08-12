@@ -11,9 +11,48 @@ public class Click {
 
     private LocalDateTime timestamp;
     private String ipAddress;
-
+    private String userAgent;
+    private String browser;
+    private String os;
+    private String country;
     @ManyToOne
     private ShortUrl shortUrl;
+
+    
+    public String getCountry() {
+        return country;
+    }
+
+    public void setCountry(String country) {
+        this.country = country;
+    }
+
+    
+    public String getUserAgent() {
+        return userAgent;
+    }
+
+    public void setUserAgent(String userAgent) {
+        this.userAgent = userAgent;
+    }
+
+    public String getBrowser() {
+        return browser;
+    }
+
+    public void setBrowser(String browser) {
+        this.browser = browser;
+    }
+
+    public String getOs() {
+        return os;
+    }
+
+    public void setOs(String os) {
+        this.os = os;
+    }
+
+    
 
     public Long getId() {
         return id;

@@ -3,8 +3,19 @@ package com.example.backend.url_shortener.service;
 import com.example.backend.url_shortener.dto.UrlDashboard;
 import com.example.backend.url_shortener.model.*;
 import com.example.backend.url_shortener.repository.*;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import jakarta.transaction.Transactional;
+
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -49,10 +60,10 @@ public class UrlService {
     Optional<ShortUrl> optional = shortUrlRepo.findByShortCode(shortCode);
     if (optional.isEmpty()) return Optional.empty();
 
-    ShortUrl url = optional.get();
-    if (url.getExpiresAt() != null && url.getExpiresAt().isBefore(LocalDateTime.now())) {
-        return Optional.empty(); // ✅ expired
-    }
+    // ShortUrl url = optional.get();
+    // if (url.getExpiresAt() != null && url.getExpiresAt().isBefore(LocalDateTime.now())) {
+    //     return Optional.empty(); // ✅ expired
+    // }
 
     return optional;
 }
@@ -85,15 +96,58 @@ public class UrlService {
         shortUrlRepo.delete(shortUrl);
     }
 }
-
-    public void recordClick(ShortUrl shortUrl, String ip) {
-        Click click = new Click();
-        click.setShortUrl(shortUrl);
-        click.setTimestamp(LocalDateTime.now());
-        click.setIpAddress(ip);
-        clickRepo.save(click);
+ @Transactional
+    public void softDeleteUrl(String shortCode) {
+        shortUrlRepo.softDeleteByShortCode(shortCode);
+        clickRepo.deleteByShortUrl(shortUrlRepo.findByShortCode(shortCode).orElseThrow(() -> new IllegalArgumentException("Short URL not found")));
     }
 
+    @Scheduled(cron = "0 0 * * * *") // every hour
+    @Transactional
+    public void pruneExpiredUrls() {
+        shortUrlRepo.pruneExpired();
+    }
+    public void recordClick(ShortUrl shortUrl, String ipAddress, String userAgent) {
+
+        String browser = parseBrowser(userAgent);
+        String os = parseOS(userAgent);
+
+        Click click = new Click();
+        click.setShortUrl(shortUrl);
+        click.setIpAddress(ipAddress);
+        click.setUserAgent(userAgent);
+        click.setBrowser(browser);
+        click.setOs(os);
+        click.setTimestamp(LocalDateTime.now());
+        String country = getCountryFromIp(ipAddress);
+        click.setCountry(country);
+        clickRepo.save(click);
+    }
+    private String getCountryFromIp(String ip) {
+    try {
+        // Handle localhost for development
+        if ("127.0.0.1".equals(ip) || "0:0:0:0:0:0:0:1".equals(ip)) {
+            return "Localhost";
+        }
+
+        String apiUrl = "http://ip-api.com/json/" + ip + "?fields=country";
+        HttpURLConnection connection = (HttpURLConnection) new URL(apiUrl).openConnection();
+        connection.setRequestMethod("GET");
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+            StringBuilder response = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                response.append(line);
+            }
+            JsonObject json = JsonParser.parseString(response.toString()).getAsJsonObject();
+            return json.get("country").getAsString();
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+        return "Unknown";
+    }
+}
     public long getClickCount(ShortUrl shortUrl) {
         return clickRepo.findByShortUrl(shortUrl).size();
     }
@@ -107,4 +161,40 @@ public class UrlService {
         }
         return sb.toString();
     }
+   
+
+    public List<Click> getClicks(String shortCode) {
+        return clickRepo.findByShortUrl_ShortCode(shortCode);
+    }
+    private String parseBrowser(String ua) {
+    if (ua == null) return "Unknown";
+    ua = ua.toLowerCase();
+    if (ua.contains("chrome")) return "Chrome";
+    if (ua.contains("firefox")) return "Firefox";
+    if (ua.contains("safari") && !ua.contains("chrome")) return "Safari";
+    if (ua.contains("edge")) return "Edge";
+    if (ua.contains("opera")) return "Opera";
+    return "Other";
+}
+
+private String parseOS(String ua) {
+    if (ua == null) return "Unknown";
+    ua = ua.toLowerCase();
+    if (ua.contains("windows")) return "Windows";
+    if (ua.contains("mac os")) return "Mac OS";
+    if (ua.contains("linux")) return "Linux";
+    if (ua.contains("android")) return "Android";
+    if (ua.contains("iphone") || ua.contains("ios")) return "iOS";
+    return "Other";
+}
+
+public List<ShortUrl> searchAndFilter(String query, Integer minClicks, Integer maxClicks, LocalDate startDate, LocalDate endDate) {
+    if (query == null || query.trim().isEmpty()) {
+        query = null;
+    } else {
+        query = "%" + query.trim() + "%";
+    }
+    return shortUrlRepo.searchAndFilter(query, minClicks, maxClicks, startDate, endDate);
+}
+    
 }

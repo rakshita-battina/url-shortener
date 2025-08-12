@@ -1,0 +1,102 @@
+{
+  "info": {
+    "name": "URL Shortener - Soft Delete + Pruning",
+    "_postman_id": "c345e2b6-1f4f-41db-8c6f-16fd98f0348a",
+    "description": "Test suite for soft delete and pruning in the URL shortener backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1 - Create Short URL",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"originalUrl\": \"https://example.com\",\n  \"customCode\": \"test123\",\n  \"expiresAt\": null\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/shorten",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "shorten"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "2 - Get All Active URLs",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8080/api/urls",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "urls"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "3 - Soft Delete URL",
+      "request": {
+        "method": "DELETE",
+        "url": {
+          "raw": "http://localhost:8080/api/url/test123",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "url", "test123"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "4 - Verify Soft Delete",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8080/api/urls",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "urls"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5 - Trigger Pruning Job (Manual)",
+      "request": {
+        "method": "POST",
+        "url": {
+          "raw": "http://localhost:8080/api/prune",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "prune"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "6 - Verify Permanent Deletion",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:8080/api/urls",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["api", "urls"]
+        }
+      },
+      "response": []
+    }
+  ]
+}
+t
