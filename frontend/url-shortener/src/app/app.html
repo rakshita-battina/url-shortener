@@ -1,0 +1,179 @@
+<div class="container mt-5">
+  <div class="card shadow-lg p-4 rounded">
+    <div class="text-end mb-2">
+      <button class="btn btn-sm btn-outline-secondary" (click)="toggleTheme()">
+        <i class="bi" [ngClass]="theme === 'dark' ? 'bi-brightness-high' : 'bi-moon'"></i>
+        {{ theme === 'dark' ? 'Light Mode' : 'Dark Mode' }}
+      </button>
+    </div>
+
+    <h2 class="mb-4 text-center">
+      <i class="bi bi-link-45deg me-2"></i>URL Shortener
+    </h2>
+    <div class="mb-3">
+      <label for="bulkFile" class="form-label">Bulk Upload (CSV)</label>
+      <input type="file" id="bulkFile" (change)="onFileSelected($event)" class="form-control" accept=".csv">
+      <button class="btn btn-primary mt-2" (click)="uploadBulk()" [disabled]="!selectedFile">Upload</button>
+      <div *ngIf="bulkUploadSuccess && bulkUploadedUrls.length" class="alert alert-success mt-3">
+  <strong>Bulk upload successful!</strong>
+  <ul class="list-unstyled mt-2">
+    <li *ngFor="let u of bulkUploadedUrls; let i = index" class="d-flex justify-content-between align-items-center">
+      <div>
+        <strong>Shortened URL:</strong>
+        <a [href]="baseUrl + '/r/' + u.shortCode"
+           target="_blank"
+           class="ms-1"
+           [attr.title]="u.originalUrl"
+           data-bs-toggle="tooltip"
+           data-bs-placement="top">
+          {{ baseUrl + '/r/' + u.shortCode }}
+        </a>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary ms-2" (click)="copyBulkToClipboard(u.shortCode, i)">
+        <i class="bi bi-clipboard"></i>
+      </button>
+      <span *ngIf="bulkCopiedStates[i]" class="ms-2 text-success">Copied!</span>
+    </li>
+  </ul>
+</div>
+    </div>
+    
+
+    <!-- Input Form -->
+    <form (ngSubmit)="shortenUrl()">
+      <div class="input-group mb-3">
+        <input [(ngModel)]="originalUrl" name="originalUrl" class="form-control" placeholder="Enter a long URL..." required />
+        <button class="btn btn-primary" type="submit">
+          <i class="bi bi-scissors"></i> Shorten
+        </button>
+      </div>
+    </form>
+
+    <!-- Custom Code Input -->
+    <div class="input-group mb-3">
+      <input [(ngModel)]="customCode" name="customCode" class="form-control" placeholder="Optional: custom short code (e.g. my-link)" />
+    </div>
+
+    <!-- Success message and newly shortened URLs after upload -->
+
+
+    <!-- Shortened URL -->
+    <div *ngIf="shortCode" class="alert alert-success d-flex justify-content-between align-items-center">
+      <div>
+        <strong>Shortened URL:</strong>
+        <a
+          [href]="'/r/' + shortCode"
+          target="_blank"
+          class="ms-1"
+          [attr.title]="originalUrl"
+          data-bs-toggle="tooltip"
+          data-bs-placement="top"
+        >
+          {{ baseUrl + '/r/' + shortCode }}
+        </a>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary" (click)="copyToClipboard()">
+        <i class="bi bi-clipboard"></i>
+      </button>
+    </div>
+
+    <!-- Toggle Button -->
+    <button class="btn btn-outline-primary mb-2" (click)="showQr = !showQr">
+      {{ showQr ? 'Hide QR' : 'Show QR' }}
+    </button>
+
+    <!-- QR Modal -->
+    <div *ngIf="showQr" class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.5)">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-center p-4">
+          <h5 class="modal-title mb-3">QR Code for Short URL</h5>
+
+          <div #qrWrapper>
+            <qrcode
+              [qrdata]="qrUrl"
+              [width]="200"
+              [errorCorrectionLevel]="'M'">
+            </qrcode>
+          </div>
+
+          <div class="mt-3 d-flex justify-content-center gap-3">
+            <button class="btn btn-success" (click)="downloadQr()">Download PNG</button>
+            <button class="btn btn-secondary" (click)="showQr = false">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expiration Date Input -->
+    <div class="mb-3">
+      <label class="form-label">Expires At</label>
+      <input type="datetime-local" class="form-control" [(ngModel)]="expiresAt" name="expiresAt" />
+    </div>
+
+    <!-- Analytics -->
+    <div *ngIf="shortCode" class="d-flex align-items-center gap-2">
+      <button class="btn btn-outline-info" (click)="getAnalytics()">
+        <i class="bi bi-bar-chart-line"></i> View Clicks
+      </button>
+    </div>
+
+    <!-- Click count -->
+    <div *ngIf="clickCount !== null" class="mt-3">
+      <h5><i class="bi bi-graph-up"></i> Click Count: <strong>{{ clickCount }}</strong></h5>
+    </div>
+
+    <h5><i class="mt-3"></i> Search & Filter: <strong>{{ clickCount }}</strong></h5>
+    <div class="search-filters">
+  <input [(ngModel)]="searchQuery" placeholder="Search URL or short code" class="form-control mb-2">
+
+  <div class="row mb-2">
+    <div class="col">
+      <input [(ngModel)]="minClicks" type="number" placeholder="Min Clicks" class="form-control">
+    </div>
+    <div class="col">
+      <input [(ngModel)]="maxClicks" type="number" placeholder="Max Clicks" class="form-control">
+    </div>
+  </div>
+
+  <div class="row mb-3">
+    <div class="col">
+      <input [(ngModel)]="startDate" type="date" class="form-control">
+    </div>
+    <div class="col">
+      <input [(ngModel)]="endDate" type="date" class="form-control">
+    </div>
+  </div>
+
+  <button class="btn btn-primary w-100" (click)="applyFilters()">Search</button>
+
+<div *ngIf="filteredUrls && filteredUrls.length > 0; else allUrls">
+  <h5>Filtered Results:</h5>
+  <div *ngFor="let url of filteredUrls" class="card mb-2 p-2">
+    <strong>Short URL:</strong>
+    <a [href]="baseUrl + '/r/' + url.shortCode" target="_blank">{{ baseUrl + '/r/' + url.shortCode }}</a>
+    <br>
+    <strong>Original URL:</strong> {{ url.originalUrl }}
+    <br>
+    <strong>Clicks:</strong> {{ url.clickCount || 0 }}
+    <br>
+    <strong>Expires At:</strong> {{ url.expiresAt ? (url.expiresAt | date:'medium') : 'Never' }}
+  </div>
+</div>
+<ng-template #allUrls>
+  <h5>All URLs:</h5>
+  <div *ngFor="let url of shortenedUrls" class="card mb-2 p-2">
+    <strong>Short URL:</strong>
+    <a [href]="baseUrl + '/r/' + url.shortCode" target="_blank">{{ baseUrl + '/r/' + url.shortCode }}</a>
+    <br>
+    <strong>Original URL:</strong> {{ url.originalUrl }}
+    <br>
+    <strong>Clicks:</strong> {{ url.clickCount || 0 }}
+    <br>
+    <strong>Expires At:</strong> {{ url.expiresAt ? (url.expiresAt | date:'medium') : 'Never' }}
+  </div>
+</ng-template>
+
+
+
+  </div>
+</div>
